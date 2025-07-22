@@ -142,3 +142,7 @@ This command will automatically discover and run tests in the `tests` directory.
 Below is an example confusion matrix for the English vocabulary of the POS tagger:
 
 ![Confusion Matrix](images/Figure_conf_matrix_eng.png)
+
+## Word Embeddings
+
+The advanced text search example requires word embedding files. These are not included with the package. Download the embeddings and adjust the paths in the example code as needed.

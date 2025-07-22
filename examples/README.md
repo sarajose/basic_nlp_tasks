@@ -37,10 +37,4 @@ Some examples (like POS tagging) require pre-trained model files. These should b
 
 ## Word Embeddings
 
-The advanced text search example requires word embedding files. These are not included with the package, but you can use embeddings from sources like:
-
-- [FastText](https://fasttext.cc/docs/en/english-vectors.html)
-- [GloVe](https://nlp.stanford.edu/projects/glove/)
-- [Word2Vec](https://code.google.com/archive/p/word2vec/)
-
-Download the embeddings and adjust the paths in the example code as needed.
+The advanced text search example requires word embedding files. These are not included with the package. Download the embeddings and adjust the paths in the example code as needed.
