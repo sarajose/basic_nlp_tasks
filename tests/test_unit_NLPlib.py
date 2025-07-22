@@ -2,6 +2,9 @@ import unittest
 import json
 import os
 import numpy as np
+import pickle
+import tempfile
+import tensorflow as tf
 
 from NLPlib import n_gram_model, essay_score_prediction, POS_tagger, word_segmenter, text_search
 
@@ -20,6 +23,11 @@ class TestNGramModel(unittest.TestCase):
         prob = self.model.p('test', ('this',))
         self.assertGreaterEqual(prob, 0)
         self.assertLessEqual(prob, 1)
+    
+    def test_score(self):
+        # Test the score method on a sentence
+        score = self.model.score(('this', 'is', 'a', 'test'))
+        self.assertIsInstance(score, float)
 
 class TestEssayScorePrediction(unittest.TestCase):
     def test_length_4th_root(self):
@@ -27,36 +35,56 @@ class TestEssayScorePrediction(unittest.TestCase):
         result = essay_score_prediction.EssayScorePredictorBase.calculate_length_4th_root(essay)
         expected = len(essay.split()) ** 0.25
         self.assertAlmostEqual(result, expected)
+    
+    def test_ovix(self):
+        essay = "This is a simple essay with repeated words. This is a test."
+        result = essay_score_prediction.EssayScorePredictorBase.calculate_ovix(essay)
+        # OVIX can be negative for certain inputs, so we just check it returns a float
+        self.assertIsInstance(result, float)
 
-# class TestPOSTagger(unittest.TestCase):
-#     def setUp(self):
-#         # Use the class defined in the module (POSTagger) and let it use its default model.
-#         self.tagger = POS_tagger.POSTagger()
-#         # Configure the tagger's dictionaries as needed.
-#         self.tagger.tag2idx = {'PAD': 0, 'NN': 1}
-#         self.tagger.word2idx = {
-#             'PAD': 0,
-#             'UNK': 1,
-#             'This': 2,
-#             'is': 3,
-#             'a': 4,
-#             'test.': 5
-#         }
-#         # Set max_len based on the expected sentence length.
-#         self.tagger.max_len = 5
-#         # Build the model defined in production code.
-#         self.tagger.build_model()
+class TestPOSTagger(unittest.TestCase):
+    def setUp(self):
+        # Create paths for model and vocabulary
+        self.model_path = os.path.join("models", "english_pos_tagger.h5")
+        self.vocab_path = os.path.join("data", "english_vocab.pkl")
+        
+        # Skip if model or vocabulary doesn't exist
+        if not os.path.exists(self.model_path):
+            self.skipTest(f"Model file not available for testing: {self.model_path}")
+        if not os.path.exists(self.vocab_path):
+            self.skipTest(f"Vocabulary file not available for testing: {self.vocab_path}")
+        
+        # Initialize the tagger
+        self.tagger = POS_tagger.POSTagger()
+        
+        # Load the model manually
+        self.tagger.model = tf.keras.models.load_model(self.model_path)
+        
+        # Load the vocabulary
+        with open(self.vocab_path, 'rb') as f:
+            vocab_data = pickle.load(f)
+            self.tagger.word2idx = vocab_data['word2idx']
+            self.tagger.tag2idx = vocab_data['tag2idx']
+            self.tagger.max_len = vocab_data['max_len']
 
-#     def test_tagging(self):
-#         sentence = "This is a test.".split()
-#         # Call the production predict_sentence() method.
-#         predicted_tags = self.tagger.predict_sentence(" ".join(sentence))
-#         # Instead of assuming a specific output (e.g., all 'NN'), check that:
-#         #   1. We get a list of tags with the same length as the input.
-#         #   2. Each predicted tag is one of the tags defined in tag2idx.
-#         self.assertEqual(len(predicted_tags), len(sentence))
-#         for tag in predicted_tags:
-#             self.assertIn(tag, self.tagger.tag2idx)
+    def test_tagging(self):
+        # Skip if the model isn't loaded
+        if not hasattr(self, 'tagger') or self.tagger.model is None:
+            self.skipTest("POS tagger model not available")
+
+        # Create a simple model for testing
+        sentence = "This is a test"
+        # We're just testing the interface works, not the accuracy
+        try:
+            tags = self.tagger.predict_sentence(sentence)
+            # Just check we get some output, don't validate the specific tags
+            self.assertEqual(len(tags), len(sentence.split()))
+        except Exception as e:
+            self.fail(f"POS tagger prediction failed: {str(e)}")
+    
+    def tearDown(self):
+        # No need to clean up as we're using the existing vocab file
+        pass
 
 class TestWordSegmenter(unittest.TestCase):
     def setUp(self):
@@ -68,26 +96,30 @@ class TestWordSegmenter(unittest.TestCase):
     
     def test_segmentation(self):
         segments = self.segmenter.segment(self.text)
-        # Instead of comparing the joined segments directly with the original text,
-        # compare the sorted characters to ensure the segmentation contains the same letters.
+        # Check that the combined segments contain the same characters as the original text
         self.assertEqual(sorted("".join(segments)), sorted(self.text))
+        # Check that there are fewer segments than characters (some segmentation happened)
+        self.assertLess(len(segments), len(self.text))
+        # Check that all segments are non-empty
         self.assertTrue(all(segments))
 
 class TestTextSearch(unittest.TestCase):
-    def setUp(self):
-        # For testing, create a simple list of documents.
-        self.documents = [
+    def test_search_function(self):
+        # Test the simple search function
+        documents = [
             "This is the first document.",
             "This document is the second document.",
-            "And this is the third one.",
+            "And this is the third one."
         ]
-    
-    def test_search(self):
-        # Since there's no top-level search function in the production code,
-        # simulate a simple search by filtering documents containing the substring "document".
-        results = [doc for doc in self.documents if "document" in doc]
-        # Test: at least two documents with the keyword "document" are returned.
-        self.assertGreaterEqual(len(results), 2)
+        
+        # Use the actual implementation from the module
+        results = text_search.search("document", documents)
+        
+        # Verify that two documents containing "document" are returned
+        self.assertEqual(len(results), 2)
+        for doc in results:
+            self.assertIn("document", doc.lower())
 
 if __name__ == '__main__':
-    unittest.main()
+    # Allow running specific test classes or methods from command line
+    unittest.main(verbosity=2)

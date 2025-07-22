@@ -18,7 +18,8 @@ pip install -e .
 
 ## Usage
 
-Below are examples demonstrating how to use each of the modules:
+The library provides several modules for natural language processing tasks. 
+Here are brief examples of each module. For complete examples, see the [examples](examples/) directory.
 
 ### N-Gram Model
 
@@ -30,7 +31,12 @@ sentences = [
     ('another', 'example', 'sentence'),
 ]
 model = n_gram_model.NGramModel(n=2, k=1.0, sentences=sentences)
-print(model.score(('this', 'is', 'a', 'sentence')))
+# Calculate probability of 'sentence' given 'example'
+prob = model.p('sentence', ('example',))
+print(f"Probability: {prob}")
+# Score the full sentence
+score = model.score(('this', 'is', 'a', 'sentence'))
+print(f"Log probability score: {score}")
 ```
 
 ### Essay Score Prediction
@@ -38,9 +44,19 @@ print(model.score(('this', 'is', 'a', 'sentence')))
 ```python
 from NLPlib import essay_score_prediction
 
+# Simple feature extraction
 essay = "Your essay text goes here."
-score = essay_score_prediction.EssayScorePredictorBase.calculate_length_4th_root(essay)
-print("Predicted Essay Score:", score)
+length_score = essay_score_prediction.EssayScorePredictorBase.calculate_length_4th_root(essay)
+ovix_score = essay_score_prediction.EssayScorePredictorBase.calculate_ovix(essay)
+print("Essay Length (4th root):", length_score)
+print("OVIX score:", ovix_score)
+
+# For a complete prediction model, you would need training data:
+# Using scikit-learn based predictor
+predictor = essay_score_prediction.EssayScorePredictorSKLearn(learning_rate=0.1, epochs=100)
+# After training with data, you could predict:
+# score = predictor.predict(essay)
+# print("Predicted Essay Score:", score)
 ```
 
 ### Part-of-Speech Tagging
@@ -48,10 +64,12 @@ print("Predicted Essay Score:", score)
 ```python
 from NLPlib import POS_tagger
 
-# Ensure the model file is located in the 'models' directory.
-pos_tagger = POS_tagger.POS_Tagger(model_path='models/pos_tagger.h5')
-sentence = "This is a test sentence.".split()
-tags = pos_tagger.tag(sentence)
+# Initialize the POS tagger with default hyperparameters
+pos_tagger = POS_tagger.POSTagger()
+
+# Provide a sentence for tagging
+sentence = "This is a test sentence."
+tags = pos_tagger.predict_sentence(sentence)
 print("POS Tags:", tags)
 ```
 
@@ -60,8 +78,13 @@ print("POS Tags:", tags)
 ```python
 from NLPlib import word_segmenter
 
+# Create a segmenter with a lexicon file
+# The lexicon file should be a JSON dictionary with word frequencies
+segmenter = word_segmenter.WordSegmenter('path_to_lexicon.json')
+
+# Segment a text with no spaces
 text = "wordsegmenterexample"
-segments = word_segmenter.segment(text)
+segments = segmenter.segment(text)
 print("Segments:", segments)
 ```
 
@@ -70,6 +93,7 @@ print("Segments:", segments)
 ```python
 from NLPlib import text_search
 
+# Simple text search
 documents = [
     "This is the first document.",
     "This document is the second document.",
@@ -77,7 +101,23 @@ documents = [
 ]
 results = text_search.search("document", documents)
 print("Search Results:", results)
+
+# For more advanced semantic search using embeddings:
+# word_vector_files = ['path_to_embeddings.en.gz']
+# search_engine = text_search.TextSearch(word_vector_files)
+# search_engine.index_text('path_to_text.gz', 'en')
+# results = search_engine.search(['document'], 'en', n_matches=2)
 ```
+
+## Examples
+
+For more detailed examples showing how to use each module, see the [examples](examples/) directory:
+
+- **ngram_model_example.py**: Working with language models
+- **essay_scoring_example.py**: Training and using essay scoring models
+- **pos_tagging_example.py**: Part-of-speech tagging with pre-trained models
+- **word_segmentation_example.py**: Segmenting continuous text into words
+- **text_search_example.py**: Basic and advanced text search functionality
 
 ## Running Tests
 
